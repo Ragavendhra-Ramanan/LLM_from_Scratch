@@ -68,3 +68,25 @@ generated_text = generate_text_simple(model, encoded_tensor, max_new_tokens=20, 
 decoded_text = tokenizer.decode(generated_text.squeeze(0).tolist())
 
 print(decoded_text)
+
+def text_to_token(text, tokenizer):
+    encoded = tokenizer.encode(text, allowed_special={'<|endoftext|>'})
+    encoded_tensor = torch.tensor(encoded).unsqueeze(0)
+    return encoded_tensor
+
+def token_to_text(token_ids, tokenizer):
+    flat = token_ids.squeeze(0)
+    return tokenizer.decode(flat.tolist())
+
+input_text = "I have a dream"
+tokenizer = tiktoken.get_encoding("gpt2")
+token_ids = generate_text_simple(
+    model,
+    text_to_token(input_text, tokenizer),
+    max_new_tokens=20,
+    context_size=GPT_CONFIG_124M['context_length']
+)
+
+generated_text = token_to_text(token_ids, tokenizer)
+
+print(generated_text)
