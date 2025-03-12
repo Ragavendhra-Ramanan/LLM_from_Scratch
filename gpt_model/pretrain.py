@@ -1,7 +1,7 @@
 import tiktoken
 import sys,os
 import torch
-from gpt_model import GPTModel
+from gpt_model import GPTModel,generate_text_simple,text_to_token,token_to_text
 GPT_CONFIG_124M = {
     "vocab_size": 50257,
     "context_length":256,
@@ -49,14 +49,7 @@ valid_loader = create_dataloader_v1(valid_data,
                                     drop_last=False,
                                     shuffle=False,
                                     num_workers=0)
-print("train_loader")
-for x,y in train_loader:
-    print(x.shape, y.shape)
 
-print("valid_loader")
-
-for x,y in valid_loader:
-    print(x.shape, y.shape)
 
 def calc_loss_batch(input_batch, target_batch, model, device):
     input_ids = input_batch.to(device)
@@ -94,3 +87,55 @@ with torch.no_grad():
 print(f"Train Loss: {train_loss:.4f}")
 
 print(f"Valid Loss: {valid_loss:.4f}")
+
+def train_model_simple(model,train_loader,val_loader,optimizer,device,num_epochs,eval_freq,eval_iter,start_context,tokenizer):
+    train_losses, val_losses, track_tokens_seen = [],[],[]
+    tokens_seen,global_step = 0,-1
+
+    for epoch in range(num_epochs):
+        model.train()
+        for i, (input_ids, target_ids) in enumerate(train_loader):
+            optimizer.zero_grad()
+            loss = calc_loss_batch(input_ids,target_ids,model,device)
+            loss.backward()
+            optimizer.step()
+            tokens_seen += input_ids.numel()
+            global_step += 1
+            if global_step % eval_freq == 0:
+                train_loss,val_loss = evaluate_model(model,train_loader,val_loader,device,eval_iter)
+                train_losses.append(train_loss)
+                val_losses.append(val_loss)
+                track_tokens_seen.append(tokens_seen)
+                print(f"Epoch: {epoch+1}/{num_epochs}, Step: {global_step}, Train Loss: {train_loss:.4f}, Valid Loss: {val_loss:.4f}, Tokens Seen: {tokens_seen}")
+        generate_and_print_sample(model,tokenizer,device,start_context)
+    return train_losses, val_losses, track_tokens_seen
+
+def evaluate_model(model,train_loader, val_loader, device, num_batches=None):
+    model.eval()
+    with torch.no_grad():
+        train_loss = calc_loss_loader(train_loader, model, device, num_batches)
+        val_loss = calc_loss_loader(val_loader, model, device, num_batches)
+    model.train()
+    return train_loss, val_loss
+
+def generate_and_print_sample(model, tokenizer, device, start_context):
+    model.eval()
+    context_size = model.pos_emb.weight.shape[0]
+    encoded = text_to_token(start_context,tokenizer).to(device)
+    with torch.no_grad():
+        token_ids = generate_text_simple(model=model,input_ids=encoded,max_new_tokens=50,context_size=context_size)
+    text = token_to_text(token_ids, tokenizer)
+    print(text.replace("\n", " "))
+    model.train()
+
+torch.manual_seed(123)
+model = GPTModel(config=GPT_CONFIG_124M)
+model.to(device)
+optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=0.0004,
+        weight_decay=0.1
+    )
+num_epochs = 10
+start_context = "Every Effort moves you"
+train_loss,valid_loss,tokens_seen = train_model_simple(model, train_loader, valid_loader, optimizer, device, num_epochs, eval_freq=5, eval_iter=5, start_context=start_context, tokenizer=tokenizer)
