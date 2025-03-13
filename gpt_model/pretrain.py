@@ -123,7 +123,7 @@ def generate_and_print_sample(model, tokenizer, device, start_context):
     context_size = model.pos_emb.weight.shape[0]
     encoded = text_to_token(start_context,tokenizer).to(device)
     with torch.no_grad():
-        token_ids = generate_text_simple(model=model,input_ids=encoded,max_new_tokens=50,context_size=context_size)
+        token_ids = generate_text_simple(model=model,input_ids=encoded,max_new_tokens=25,context_size=context_size)
     text = token_to_text(token_ids, tokenizer)
     print(text.replace("\n", " "))
     model.train()
@@ -137,5 +137,18 @@ optimizer = torch.optim.AdamW(
         weight_decay=0.1
     )
 num_epochs = 10
-start_context = "Every Effort moves you"
+start_context = "Every effort moves you"
 train_loss,valid_loss,tokens_seen = train_model_simple(model, train_loader, valid_loader, optimizer, device, num_epochs, eval_freq=5, eval_iter=5, start_context=start_context, tokenizer=tokenizer)
+
+model.to("cpu")
+model.eval()
+
+tokenizer = tiktoken.get_encoding("gpt2")
+token_ids = generate_text_simple(model=model,
+                                 input_ids=text_to_token("Every effort moves you",tokenizer),
+                                 max_new_tokens=25,
+                                 context_size=GPT_CONFIG_124M['context_length'])
+
+text = token_to_text(token_ids, tokenizer)
+
+print(text.replace("\n", " "))

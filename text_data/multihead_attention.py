@@ -1,18 +1,18 @@
 import torch 
-from causal_attention import CausalAttention
+# from causal_attention import CausalAttention
 
-class MultiHeadAttentionWrapper(torch.nn.Module):
-    def __init__(self,d_in,d_out,context_length,dropout,num_heads,qkv_bias=False):
-        super().__init__()
-        self.heads = torch.nn.ModuleList([CausalAttention(d_in,d_out,context_length,dropout,qkv_bias) for _ in range(num_heads)])
+# class MultiHeadAttentionWrapper(torch.nn.Module):
+#     def __init__(self,d_in,d_out,context_length,dropout,num_heads,qkv_bias=False):
+#         super().__init__()
+#         self.heads = torch.nn.ModuleList([CausalAttention(d_in,d_out,context_length,dropout,qkv_bias) for _ in range(num_heads)])
     
-    def forward(self, x):
-        return torch.cat([head(x) for head in self.heads],dim=-1)
+#     def forward(self, x):
+#         return torch.cat([head(x) for head in self.heads],dim=-1)
     
-torch.manual_seed(123)
-mha = MultiHeadAttentionWrapper(
-    3,2,6,0.0,num_heads=2
-    )
+# torch.manual_seed(123)
+# mha = MultiHeadAttentionWrapper(
+#     3,2,6,0.0,num_heads=2
+#     )
 inputs = torch.tensor(
     [
         [0.43,0.15,0.89],# Your
@@ -26,9 +26,9 @@ inputs = torch.tensor(
 
 batch = torch.stack((inputs,inputs),dim=0)
 
-context_vecs = mha(batch)
+# context_vecs = mha(batch)
 
-print(context_vecs)
+# print(context_vecs)
 
 class MultiHeadAttention(torch.nn.Module):
     def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
