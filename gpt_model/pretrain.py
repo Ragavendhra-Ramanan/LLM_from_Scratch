@@ -152,3 +152,34 @@ token_ids = generate_text_simple(model=model,
 text = token_to_text(token_ids, tokenizer)
 
 print(text.replace("\n", " "))
+
+def generate(model,idx,max_new_tokens,context_size,temperature=0.0,
+             top_k=None,eos_id=None):
+    for _ in range(max_new_tokens):
+        idx_cond = idx[:,-context_size:]
+        with torch.no_grad():
+            logits = model(idx_cond)
+        logits = logits[:,-1,:]
+        if top_k is not None:
+            top_logits,_ = torch.topk(logits, top_k)
+            min_val = top_logits[:,-1]
+            logits = torch.where(
+                logits<min_val,torch.tensor(float('-inf')).to(logits.device),
+                logits
+            )
+        if temperature>0:
+            logits /= temperature
+            logits = torch.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(logits, 1)
+        else:
+            idx_next = torch.argmax(logits, dim=-1, keepdim=True)
+        if idx_next == eos_id:
+            break
+        idx = torch.cat((idx, idx_next), dim=-1)
+    return idx
+
+
+torch.manual_seed(123)
+token_ids = generate(model=model,idx=text_to_token("Every effort moves you",tokenizer),max_new_tokens=35,
+                     context_size=GPT_CONFIG_124M['context_length'],top_k=25,temperature=1.4)
+print(token_to_text(token_ids,tokenizer).replace("\n"," "))
