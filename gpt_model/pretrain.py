@@ -183,3 +183,30 @@ torch.manual_seed(123)
 token_ids = generate(model=model,idx=text_to_token("Every effort moves you",tokenizer),max_new_tokens=35,
                      context_size=GPT_CONFIG_124M['context_length'],top_k=25,temperature=1.4)
 print(token_to_text(token_ids,tokenizer).replace("\n"," "))
+
+#load the model parameters
+torch.save(model.state_dict(),"model.pth")
+model = GPTModel(GPT_CONFIG_124M)
+
+model.load_state_dict(torch.load("model.pth", map_location=device))
+model.eval()
+
+#generate save
+torch.save({
+    "model_state_dict":model.state_dict(),
+    "optimizer_state_dict":optimizer.state_dict(),
+},
+"model_and_optimizer.pth"
+)
+
+#checkpoints
+checkpoint = torch.load("model_and_optimizer.pth",map_location=device)
+model = GPTModel(GPT_CONFIG_124M)
+
+model.load_state_dict(checkpoint["model_state_dict"])
+optimizer = torch.optim.AdamW(model.parameters(),lr=5e-4,weight_decay=0.1)
+
+optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+#training
+model.train()
